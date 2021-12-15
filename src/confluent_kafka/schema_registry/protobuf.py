@@ -215,10 +215,18 @@ class ProtobufSerializer(object):
         'use.latest.version': False,
         'skip.known.types': False,
         'subject.name.strategy': topic_subject_name_strategy,
-        'reference.subject.name.strategy': reference_subject_name_strategy
+        'reference.subject.name.strategy': reference_subject_name_strategy,
+        'use.deprecated.format': False,
     }
 
     def __init__(self, msg_type, schema_registry_client, conf=None):
+
+        if conf is None or 'use.deprecated.format' not in conf:
+            raise RuntimeError(
+                "During a transition period ending 2022-06-01 the "
+                "'use.deprecated.format' ProtobufSerializer configuration "
+                "property must be explicitly set")
+
         # handle configuration
         conf_copy = self._default_conf.copy()
         if conf is not None:
@@ -237,6 +245,19 @@ class ProtobufSerializer(object):
         self._skip_known_types = conf_copy.pop('skip.known.types')
         if not isinstance(self._skip_known_types, bool):
             raise ValueError("skip.known.types must be a boolean value")
+
+        self._use_deprecated_format = conf_copy.pop('use.deprecated.format')
+        if not isinstance(self._use_deprecated_format, bool):
+            raise ValueError("use.deprecated.format must be a boolean value")
+        if not self._use_deprecated_format:
+            warnings.warn("ProtobufSerializer: the 'use.deprecated.format' "
+                          "configuration property, and the ability to use the "
+                          "old incorrect Protobuf serializer heading format "
+                          "introduced in confluent-kafka-python v1.4.0, "
+                          "will be removed in an upcoming release in 2021 Q2. "
+                          "Please migrate your Python Protobuf producers and "
+                          "consumers to 'use.deprecated.format':True as "
+                          "soon as possible")
 
         self._subject_name_func = conf_copy.pop('subject.name.strategy')
         if not callable(self._subject_name_func):

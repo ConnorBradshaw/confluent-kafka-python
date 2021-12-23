@@ -112,6 +112,10 @@ class _RestClient(object):
 
         self.session.auth = userinfo if userinfo != ('', '') else None
 
+        oauth_cb = conf_copy.pop('oauth_cb', None)
+        if oauth_cb is not None:
+            self.oauth_cb = oauth_cb
+
         # Any leftover keys are unknown to _RestClient
         if len(conf_copy) > 0:
             raise ValueError("Unrecognized properties: {}"
@@ -163,6 +167,10 @@ class _RestClient(object):
             body = json.dumps(body)
             headers = {'Content-Length': str(len(body)),
                        'Content-Type': "application/vnd.schemaregistry.v1+json"}
+
+        if self.oauth_cb is not None:
+            token, expires = self.oauth_cb()
+            headers.update({'Authorization': f"Bearer {token}"})
 
         response = self.session.request(
             method, url="/".join([self.base_url, url]),
